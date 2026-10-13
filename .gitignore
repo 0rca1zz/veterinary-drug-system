@@ -20,16 +20,26 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env
+# env（保留 .env.example 供配置参考）
 .env
-.env*.local
+.env.*
+!.env.example
 
 # typescript
 *.tsbuildinfo
 
-# prisma
-/prisma/dev.db
-/prisma/dev.db-journal
+# prisma（数据库文件与临时文件）
+/prisma/*.db
+/prisma/*.db-journal
+/prisma/*.db-wal
+/prisma/*.db-shm
 
 # workspace-local npm cache
 /.npm-cache/
+
+# vercel
+.vercel
+
+# IDE
+.vscode/
+.idea/

@@ -1,6 +1,6 @@
 {
   "name": "veterinary-drug-system",
-  "version": "0.1.0",
+  "version": "1.1.0",
   "private": true,
   "description": "动物疾病与兽药查询系统（Veterinary Drug Decision Support System）——仅供动物医学学习和临床辅助参考，不替代执业兽医诊断",
   "scripts": {
