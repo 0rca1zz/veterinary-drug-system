@@ -1,0 +1,142 @@
+// ============================================================
+// 动物疾病与兽药查询系统 —— Prisma Schema
+// 说明：本系统仅供动物医学学习与临床辅助参考，不替代执业兽医诊断，
+//       不自动开处方、不根据疾病直接生成治疗方案。
+// ============================================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- 动物种类 ----------
+model Animal {
+  id        String    @id @default(cuid())
+  name      String    @unique // 犬 / 猫 / 猪 / 牛 / 羊 / 家禽
+  code      String    @unique // dog / cat / pig / cattle / sheep / poultry
+  diseases  Disease[]
+  drugs     Drug[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+// ---------- 疾病 ----------
+model Disease {
+  id                        String        @id @default(cuid())
+  name                      String // 疾病名称
+  speciesId                 String // 所属动物
+  species                   Animal        @relation(fields: [speciesId], references: [id], onDelete: Restrict)
+  category                  String? // 分类（传染病/寄生虫/皮肤/消化/呼吸…）
+  description               String? // 疾病简介
+  cause                     String? // 病因
+  symptoms                  String? // 临床症状
+  diagnosis                 String? // 诊断依据
+  treatment                 String? // 治疗原则（仅原则，非处方）
+  examinations              String? // 推荐检查
+  recommendedDrugCategories String? // 推荐药物类别（文本，逗号分隔）
+  notes                     String? // 注意事项
+  isDemo                    Boolean       @default(true) // 演示数据标注
+  drugs                     DiseaseDrug[]
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime      @updatedAt
+
+  @@index([speciesId])
+  @@index([name])
+}
+
+// ---------- 药物分类 ----------
+model DrugCategory {
+  id        String   @id @default(cuid())
+  name      String   @unique // 抗生素/抗寄生虫/解热镇痛/疫苗/…
+  drugs     Drug[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ---------- 药物 ----------
+model Drug {
+  id                    String             @id @default(cuid())
+  genericName           String // 通用名
+  brandName             String? // 商品名
+  categoryId            String?
+  category              DrugCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  targetSpecies         Animal[] // 适用动物（多对多）
+  indications           String? // 适应症
+  contraindications     String? // 禁忌症（文本汇总）
+  adverseEffects        String? // 常见副作用
+  pregnancyWarning      String? // 妊娠期警示
+  requiresPrescription  Boolean            @default(false) // 是否处方药
+  description           String? // 药物说明
+  isDemo                Boolean            @default(true) // 演示数据标注
+  diseases              DiseaseDrug[]
+  contraindicationRules Contraindication[]
+  interactionsA         DrugInteraction[]  @relation("InteractionA")
+  interactionsB         DrugInteraction[]  @relation("InteractionB")
+  createdAt             DateTime           @default(now())
+  updatedAt             DateTime           @updatedAt
+
+  @@index([genericName])
+  @@index([categoryId])
+}
+
+// ---------- 疾病-药物关联 ----------
+model DiseaseDrug {
+  diseaseId      String
+  drugId         String
+  recommendLevel String // 一线 / 二线 / 辅助
+  reason         String? // 推荐原因
+  disease        Disease @relation(fields: [diseaseId], references: [id], onDelete: Cascade)
+  drug           Drug    @relation(fields: [drugId], references: [id], onDelete: Cascade)
+
+  @@id([diseaseId, drugId])
+  @@index([drugId])
+}
+
+// ---------- 禁忌症规则（供规则引擎判断） ----------
+model Contraindication {
+  id          String   @id @default(cuid())
+  drugId      String
+  drug        Drug     @relation(fields: [drugId], references: [id], onDelete: Cascade)
+  type        String // pregnancy | age | weight | species | disease | other
+  description String // 人类可读描述
+  species     String? // type=species 时：不适用动物 code
+  minAgeWeeks Int? // type=age 时：最小年龄（周）
+  maxAgeWeeks Int?
+  minWeightKg Float? // type=weight 时：体重限制
+  maxWeightKg Float?
+  pregnancy   Boolean? // type=pregnancy 时：true 表示孕期禁用
+  severity    String   @default("禁用") // 禁用 / 慎用
+  createdAt   DateTime @default(now())
+
+  @@index([drugId])
+}
+
+// ---------- 药物相互作用 ----------
+model DrugInteraction {
+  id          String @id @default(cuid())
+  drugAId     String
+  drugBId     String
+  severity    String // high / medium / low
+  description String
+  drugA       Drug   @relation("InteractionA", fields: [drugAId], references: [id], onDelete: Cascade)
+  drugB       Drug   @relation("InteractionB", fields: [drugBId], references: [id], onDelete: Cascade)
+
+  @@unique([drugAId, drugBId])
+  @@index([drugBId])
+}
+
+// ---------- 参考资料 ----------
+model Reference {
+  id         String   @id @default(cuid())
+  title      String
+  source     String?
+  url        String?
+  entityType String // disease | drug
+  entityId   String?
+  note       String?
+  createdAt  DateTime @default(now())
+}
